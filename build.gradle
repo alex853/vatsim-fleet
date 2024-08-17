@@ -28,8 +28,6 @@ dependencies {
     implementation 'net.simforge:network-view-core:latest.release'
 
     implementation 'postgresql:postgresql:9.1-901-1.jdbc4'
-//    implementation 'ch.qos.logback:logback-classic:1.1.7'
-//    implementation 'org.ehcache:ehcache:3.3.1'
     implementation group: 'commons-collections', name: 'commons-collections', version: '3.2.2'
 
     testImplementation 'junit:junit:4.11'
