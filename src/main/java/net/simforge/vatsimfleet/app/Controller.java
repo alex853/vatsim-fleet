@@ -4,6 +4,7 @@ import net.simforge.commons.misc.JavaTime;
 import net.simforge.networkview.core.report.ReportUtils;
 import net.simforge.networkview.core.report.persistence.Report;
 import net.simforge.vatsimfleet.processor.Aircraft;
+import net.simforge.vatsimfleet.processor.ErroneousCases;
 import net.simforge.vatsimfleet.processor.VatsimFleetProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,5 +58,10 @@ public class Controller {
         status.put("memory", memoryReport);
 
         return ResponseEntity.ok(status);
+    }
+
+    @GetMapping("erroneous-cases")
+    public ResponseEntity<Map<String, ErroneousCases.CaseInfo>> getErroneousCases() {
+        return ResponseEntity.ok(ErroneousCases.getCases());
     }
 }

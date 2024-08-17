@@ -8,7 +8,7 @@ public class ErroneousCases {
     private static final Map<String, CaseInfo> cases = new TreeMap<>();
 
     private static final Set<String> caseCodesToBeSkipped = new TreeSet<>(Arrays.asList(
-            "N0", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9"
+//            "N0", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9"
     ));
 
     public static void report(final String callsign, String regNo, String report) {
@@ -22,7 +22,7 @@ public class ErroneousCases {
             CaseInfo caseInfo = cases.computeIfAbsent(caseCode, c -> new CaseInfo(caseCode));
             caseInfo = caseInfo.report(callsign, regNo, report);
             cases.put(caseCode, caseInfo);
-            if (caseInfo.getCount() >= 10) {
+            if (caseInfo.getCount() >= 100) {
                 cases.remove(caseCode);
                 queue.add(caseInfo);
             }
@@ -31,6 +31,12 @@ public class ErroneousCases {
 
     public static CaseInfo getNext() {
         return queue.poll();
+    }
+
+    public static Map<String, CaseInfo> getCases() {
+        synchronized (cases) {
+            return new TreeMap<>(cases);
+        }
     }
 
     public static class CaseInfo {
