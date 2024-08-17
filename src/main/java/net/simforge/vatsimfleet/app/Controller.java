@@ -11,7 +11,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 @RestController
 @RequestMapping("service/v1")
@@ -26,21 +29,33 @@ public class Controller {
 
     @GetMapping("parked-aircraft-by-icao")
     public ResponseEntity<List<Aircraft>> getParkedAircraftByIcao(@RequestParam("icao") final String icao) {
-        log.info("retrieving parked aircraft by icao");
+        log.info("retrieving parked aircraft by icao - {}", icao);
         final List<Aircraft> parkedAircraft = VatsimFleetProcessor.getParkedAircraftByIcao(icao);
         return ResponseEntity.ok(parkedAircraft);
     }
 
     @GetMapping("status")
-    public ResponseEntity<String> getStatus() {
+    public ResponseEntity<Map<String, Object>> getStatus() {
+        Map<String, Object> status = new HashMap<>();
+
         final Report lastProcessedReport = VatsimFleetProcessor.getLastProcessedReport();
-        if (lastProcessedReport == null) {
-            return ResponseEntity.ok("FAIL-NOTHING-PROCESSED");
-        }
-
-        final LocalDateTime reportTimestamp = ReportUtils.fromTimestampJava(lastProcessedReport.getReport());
+        final LocalDateTime reportTimestamp = lastProcessedReport != null
+                ? ReportUtils.fromTimestampJava(lastProcessedReport.getReport())
+                : LocalDateTime.MIN;
         final double hours = JavaTime.hoursBetween(reportTimestamp, JavaTime.nowUtc());
+        final boolean ok = hours <= 0.2;
 
-        return ResponseEntity.ok(hours <= 0.2 ? "OK" : "FAIL-EXPIRED");
+        status.put("status", (ok ? "OK" : "FAIL"));
+
+        status.put("lastProcessedReport", lastProcessedReport != null ? lastProcessedReport.getReport() : null);
+
+        Map<String, Integer> memoryReport = new TreeMap<>();
+        memoryReport.put("used", MemoryReport.getUsedMB());
+        memoryReport.put("free", MemoryReport.getFreeMB());
+        memoryReport.put("total", MemoryReport.getTotalMB());
+        memoryReport.put("max", MemoryReport.getMaxMB());
+        status.put("memory", memoryReport);
+
+        return ResponseEntity.ok(status);
     }
 }
