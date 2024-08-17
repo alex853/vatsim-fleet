@@ -1,6 +1,6 @@
 package net.simforge.vatsimfleet.app;
 
-import net.simforge.vatsimfleet.processor.ErrorneousCases;
+import net.simforge.vatsimfleet.processor.ErroneousCases;
 import net.simforge.vatsimfleet.processor.TrelloSender;
 import net.simforge.vatsimfleet.processor.VatsimFleetProcessor;
 import org.slf4j.Logger;
@@ -19,11 +19,15 @@ public class ScheduledTasks {
 
     @Scheduled(fixedRate = 30000)
     public void sendTrello() {
-        final String message = ErrorneousCases.getNext();
-        if (message == null) {
+        final ErroneousCases.CaseInfo caseInfo = ErroneousCases.getNext();
+        if (caseInfo == null) {
             return;
         }
-        log.warn("Sending message {} to Trello", message);
-        TrelloSender.send(message);
+
+        final String name = String.format("[VATSIM-FLEET] Case %s", caseInfo.getCaseCode());
+        final String description = caseInfo.getCaseContent();
+
+        log.warn("Creating Trello card {}", name);
+        TrelloSender.send(name,description);
     }
 }

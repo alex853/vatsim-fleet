@@ -10,13 +10,14 @@ import java.net.*;
 public class TrelloSender {
     private static final Logger log = LoggerFactory.getLogger(TrelloSender.class);
 
-    public static void send(final String cardName) {
+    public static void send(final String name, final String description) {
         try {
-            final String url = String.format("https://api.trello.com/1/cards?idList=%s&key=%s&token=%s&name=%s",
+            final String url = String.format("https://api.trello.com/1/cards?idList=%s&key=%s&token=%s&name=%s&desc=%s",
                     Settings.get("trello.idList"),
                     Settings.get("trello.apiKey"),
                     Settings.get("trello.token"),
-                    URLEncoder.encode(cardName));
+                    URLEncoder.encode(name),
+                    URLEncoder.encode(description));
 
             final HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
             con.setRequestMethod("POST");
@@ -25,10 +26,10 @@ public class TrelloSender {
             final int responseCode = con.getResponseCode();
 
             if (responseCode != 200) {
-                log.error("Unable to create card {}, response code {}", cardName, responseCode);
+                log.error("Unable to create card {}, response code {}", name, responseCode);
             }
         } catch (final IOException e) {
-            log.error("Error while creating card {} to Trello", cardName, e);
+            log.error("Error while creating card {} to Trello", name, e);
         }
     }
 }

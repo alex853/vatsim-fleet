@@ -90,9 +90,9 @@ public class VatsimFleetProcessor {
             if (callsign.equals(regNo)) {
                 airlineCode = null;
             } else {
-                airlineCode = callsign.substring(0, 3);
+                airlineCode = callsign.substring(0, Math.min(3, callsign.length()));
                 if (airlineCode.matches(".*\\d.*")) {
-                    ErrorneousCases.report(String.format("Callsign %s, RegNo %s, Report %s", callsign, regNo, reportPilotPosition.getReport()));
+                    ErroneousCases.report(callsign, regNo, reportPilotPosition.getReport().getReport());
                     airlineCode = null;
                 }
             }
