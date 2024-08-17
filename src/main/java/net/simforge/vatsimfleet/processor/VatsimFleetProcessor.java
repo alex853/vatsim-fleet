@@ -99,6 +99,10 @@ public class VatsimFleetProcessor {
         return parkedAircraft.getOrDefault(icao, new ArrayList<>());
     }
 
+    public static Report getLastProcessedReport() {
+        return lastProcessedReport;
+    }
+
     private static class PilotStatus {
         private ReportPilotPosition position;
 
