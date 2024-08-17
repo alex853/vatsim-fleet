@@ -23,6 +23,22 @@ public class Aircraft {
         return aircraftType;
     }
 
+    public String getRegNo() {
+        return regNo;
+    }
+
+    public String getAirlineCode() {
+        return airlineCode;
+    }
+
+    public double getLat() {
+        return lat;
+    }
+
+    public double getLon() {
+        return lon;
+    }
+
     @Override
     public String toString() {
         return String.format("Aircraft{ type: %s, regNo: %s, airline: %s, %.4f, %.4f }",
