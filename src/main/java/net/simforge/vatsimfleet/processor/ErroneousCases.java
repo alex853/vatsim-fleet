@@ -7,8 +7,16 @@ public class ErroneousCases {
     private static final Queue<CaseInfo> queue = new LinkedBlockingQueue<>();
     private static final Map<String, CaseInfo> cases = new TreeMap<>();
 
+    private static final Set<String> caseCodesToBeSkipped = new TreeSet<>(Arrays.asList(
+            "N0", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9"
+    ));
+
     public static void report(final String callsign, String regNo, String report) {
         final String caseCode = callsign.substring(0, Math.min(2, callsign.length()));
+
+        if (caseCodesToBeSkipped.contains(caseCode)) {
+            return;
+        }
 
         synchronized (cases) {
             CaseInfo caseInfo = cases.computeIfAbsent(caseCode, c -> new CaseInfo(caseCode));
