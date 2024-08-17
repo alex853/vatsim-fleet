@@ -2,9 +2,21 @@ package net.simforge.vatsimfleet.processor;
 
 public class Aircraft {
     private final String aircraftType;
+    private final String regNo;
+    private final String airlineCode;
+    private final double lat;
+    private final double lon;
 
-    public Aircraft(String aircraftType) {
+    public Aircraft(final String aircraftType,
+                    final String regNo,
+                    final String airlineCode,
+                    final double lat,
+                    final double lon) {
         this.aircraftType = aircraftType;
+        this.regNo = regNo;
+        this.airlineCode = airlineCode;
+        this.lat = lat;
+        this.lon = lon;
     }
 
     public String getAircraftType() {
@@ -13,8 +25,7 @@ public class Aircraft {
 
     @Override
     public String toString() {
-        return "Aircraft{" +
-                "aircraftType='" + aircraftType + '\'' +
-                '}';
+        return String.format("Aircraft{ type: %s, regNo: %s, airline: %s, %.4f, %.4f }",
+                aircraftType, regNo,airlineCode, lat, lon);
     }
 }

@@ -53,7 +53,7 @@ public class VatsimFleetProcessor {
                         final Optional<Aircraft> aircraft = aircraftInAirport.stream().filter(a -> aircraftType.equals(a.getAircraftType())).findFirst();
                         if (aircraft.isPresent()) {
                             aircraftInAirport.remove(aircraft.get());
-                            log.info("Aircraft {} UNparked at {}", aircraft, airportIcao);
+                            log.info("Airport {} - Aircraft unparked {}", airportIcao, aircraft.get());
                         }
                     }
                 }
@@ -70,8 +70,8 @@ public class VatsimFleetProcessor {
         unseenPilotNumbers.forEach(pilotNumber -> {
             final PilotStatus pilotStatus = pilots.remove(pilotNumber);
 
-            ReportPilotPosition reportPilotPosition = pilotStatus.getPosition();
-            Position position = Position.create(reportPilotPosition);
+            final ReportPilotPosition reportPilotPosition = pilotStatus.getPosition();
+            final Position position = Position.create(reportPilotPosition);
             if (!position.isOnGround() || !position.isInAirport()) {
                 return;
             }
@@ -83,11 +83,30 @@ public class VatsimFleetProcessor {
                 return;
             }
 
-            final Aircraft aircraft = new Aircraft(aircraftType);
+            final String callsign = position.getCallsign();
+            final String regNo = position.getRegNo();
+
+            String airlineCode;
+            if (callsign.equals(regNo)) {
+                airlineCode = null;
+            } else {
+                airlineCode = callsign.substring(0, 3);
+                if (airlineCode.matches(".*\\d.*")) {
+                    ErrorneousCases.report(String.format("Callsign %s, RegNo %s, Report %s", callsign, regNo, reportPilotPosition.getReport()));
+                    airlineCode = null;
+                }
+            }
+
+            final Aircraft aircraft = new Aircraft(
+                    aircraftType,
+                    regNo,
+                    airlineCode,
+                    position.getCoords().getLat(),
+                    position.getCoords().getLon());
 
             final List<Aircraft> aircraftInAirport = parkedAircraft.computeIfAbsent(airportIcao, icao -> new ArrayList<>());
             aircraftInAirport.add(aircraft);
-            log.info("Aircraft {} parked at {}", aircraft, airportIcao);
+            log.info("Airport {} - Aircraft parked {}", airportIcao, aircraft);
         });
 
         VatsimFleetProcessor.pilots = pilots;
