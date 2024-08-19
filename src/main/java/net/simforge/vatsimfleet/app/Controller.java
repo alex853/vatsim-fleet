@@ -50,6 +50,7 @@ public class Controller {
         status.put("status", (ok ? "OK" : "FAIL"));
 
         status.put("lastProcessedReport", lastProcessedReport != null ? lastProcessedReport.getReport() : null);
+        status.put("aircraftCount", VatsimFleetProcessor.getAircraftCount());
 
         Map<String, Integer> memoryReport = new TreeMap<>();
         memoryReport.put("used", MemoryReport.getUsedMB());

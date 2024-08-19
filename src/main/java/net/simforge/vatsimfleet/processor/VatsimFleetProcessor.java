@@ -17,11 +17,17 @@ public class VatsimFleetProcessor {
     private static final ReportSessionManager sessionManager = new ReportSessionManager();
     private static final ReportOpsService reportOpsService = new BaseReportOpsService(sessionManager, Network.VATSIM);
     private static Report lastProcessedReport = null;
+    private static long nextTimeToLookForReport = 0;
 
     private static Map<Integer, PilotStatus> pilots = new TreeMap<>();
     private static Map<String, List<Aircraft>> parkedAircraft = new TreeMap<>();
 
     public static void processOneReport() {
+        final long now = System.currentTimeMillis();
+        if (nextTimeToLookForReport != 0 && now < nextTimeToLookForReport) {
+            return;
+        }
+
         final Map<Integer, PilotStatus> pilots = new TreeMap<>(VatsimFleetProcessor.pilots);
         final Map<String, List<Aircraft>> parkedAircraft = new TreeMap<>(VatsimFleetProcessor.parkedAircraft);
 
@@ -30,7 +36,10 @@ public class VatsimFleetProcessor {
                 : reportOpsService.loadFirstReport();
 
         if (nextReport == null || !nextReport.getParsed()) {
+            nextTimeToLookForReport = now + 5000;
             return;
+        } else {
+            nextTimeToLookForReport = 0;
         }
 
         log.info("Processing report {}", nextReport);
@@ -42,19 +51,12 @@ public class VatsimFleetProcessor {
             PilotStatus pilotStatus = pilots.get(pilotNumber);
             if (pilotStatus == null) {
                 Position position = Position.create(p);
-                if (position.isInAirport() && position.isOnGround()) {
+                if (position.isInAirport() && position.isOnGround() && lastProcessedReport != null) {
                     final String airportIcao = position.getAirportIcao();
                     final String aircraftType = position.getFpAircraftType();
 
                     if (airportIcao != null && aircraftType != null) {
-                        //noinspection MismatchedQueryAndUpdateOfCollection
-                        final List<Aircraft> aircraftInAirport = parkedAircraft.getOrDefault(airportIcao, new ArrayList<>());
-
-                        final Optional<Aircraft> aircraft = aircraftInAirport.stream().filter(a -> aircraftType.equals(a.getAircraftType())).findFirst();
-                        if (aircraft.isPresent()) {
-                            aircraftInAirport.remove(aircraft.get());
-                            log.info("Airport {} - Aircraft unparked {}", airportIcao, aircraft.get());
-                        }
+                        activateAircraft(position, parkedAircraft);
                     }
                 }
 
@@ -83,35 +85,71 @@ public class VatsimFleetProcessor {
                 return;
             }
 
-            final String callsign = position.getCallsign();
-            final String regNo = position.getRegNo();
-
-            String airlineCode;
-            if (callsign.equals(regNo)) {
-                airlineCode = null;
-            } else {
-                airlineCode = callsign.substring(0, Math.min(3, callsign.length()));
-                if (airlineCode.matches(".*\\d.*")) {
-                    ErroneousCases.report(callsign, regNo, reportPilotPosition.getReport().getReport());
-                    airlineCode = null;
-                }
-            }
-
-            final Aircraft aircraft = new Aircraft(
-                    aircraftType,
-                    regNo,
-                    airlineCode,
-                    position.getCoords().getLat(),
-                    position.getCoords().getLon());
-
-            final List<Aircraft> aircraftInAirport = parkedAircraft.computeIfAbsent(airportIcao, icao -> new ArrayList<>());
-            aircraftInAirport.add(aircraft);
-            log.info("Airport {} - Aircraft parked {}", airportIcao, aircraft);
+            parkAircraft(position, parkedAircraft);
         });
 
         VatsimFleetProcessor.pilots = pilots;
         VatsimFleetProcessor.parkedAircraft = parkedAircraft;
         lastProcessedReport = nextReport;
+    }
+
+    private static void parkAircraft(final Position position, final Map<String, List<Aircraft>> parkedAircraft) {
+        final String aircraftType = position.getFpAircraftType();
+        final String airportIcao = position.getAirportIcao();
+        final String regNo = position.getRegNo();
+        final String airlineCode = getAirlineCode(position);
+
+        final Aircraft aircraft = new Aircraft(
+                aircraftType,
+                regNo,
+                airlineCode,
+                position.getCoords().getLat(),
+                position.getCoords().getLon());
+
+        final List<Aircraft> aircraftInAirport = parkedAircraft.getOrDefault(airportIcao, Collections.emptyList());
+        final ArrayList<Aircraft> newAircraftInAirport = new ArrayList<>(aircraftInAirport);
+        newAircraftInAirport.add(aircraft);
+        parkedAircraft.put(airportIcao, Collections.unmodifiableList(newAircraftInAirport));
+        log.info("Airport {} - PARK - Aircraft {} PARKED", airportIcao, aircraft);
+    }
+
+    private static void activateAircraft(final Position position, final Map<String, List<Aircraft>> parkedAircraft) {
+        final String airportIcao = position.getAirportIcao();
+        final String aircraftType = position.getFpAircraftType();
+        final String airlineCode = getAirlineCode(position);
+
+        final List<Aircraft> aircraftInAirport = parkedAircraft.getOrDefault(airportIcao, Collections.emptyList());
+        log.info("Airport {} - ACTIVATE - Type {}, Airline {}, All available aircraft in airport {}", airportIcao, aircraftType, airlineCode, aircraftInAirport);
+
+        final List<Aircraft> aircraftByType = aircraftInAirport.stream().filter(a -> Objects.equals(aircraftType, a.getAircraftType())).collect(Collectors.toList());
+        final List<Aircraft> aircraftByAirline = aircraftByType.stream().filter(a -> Objects.equals(airlineCode, a.getAirlineCode())).collect(Collectors.toList());
+
+        if (aircraftByAirline.isEmpty()) {
+            log.info("Airport {} - ACTIVATE - No suitable aircraft found", airportIcao);
+            return;
+        }
+
+        final Aircraft aircraft = aircraftInAirport.get(0);
+        final ArrayList<Aircraft> newAircraftInAirport = new ArrayList<>(aircraftInAirport);
+        newAircraftInAirport.remove(aircraft);
+        parkedAircraft.put(airportIcao, Collections.unmodifiableList(newAircraftInAirport));
+        log.info("Airport {} - ACTIVATE - Aircraft {} ACTIVATED", airportIcao, aircraft);
+    }
+
+    private static String getAirlineCode(final Position position) {
+        final String callsign = position.getCallsign();
+        final String regNo = position.getRegNo();
+
+        if (callsign.equals(regNo)) {
+            return null;
+        } else {
+            final String callsignHead = callsign.substring(0, Math.min(3, callsign.length()));
+            if (callsignHead.matches(".*\\d.*")) {
+                ErroneousCases.report(callsign, regNo, position.getReportInfo().getReport());
+                return null;
+            }
+            return callsignHead;
+        }
     }
 
     public static List<Aircraft> getParkedAircraftByIcao(final String icao) {
@@ -120,6 +158,10 @@ public class VatsimFleetProcessor {
 
     public static Report getLastProcessedReport() {
         return lastProcessedReport;
+    }
+
+    public static int getAircraftCount() {
+        return parkedAircraft.keySet().stream().mapToInt(String::length).sum();
     }
 
     private static class PilotStatus {

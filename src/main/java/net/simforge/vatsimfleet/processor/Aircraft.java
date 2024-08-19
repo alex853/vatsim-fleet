@@ -41,7 +41,7 @@ public class Aircraft {
 
     @Override
     public String toString() {
-        return String.format("Aircraft{ type: %s, regNo: %s, airline: %s, %.4f, %.4f }",
-                aircraftType, regNo,airlineCode, lat, lon);
+        return String.format("Aircraft{ type: %s, airline: %s, regNo: %s, %.4f, %.4f }",
+                aircraftType, airlineCode, regNo, lat, lon);
     }
 }

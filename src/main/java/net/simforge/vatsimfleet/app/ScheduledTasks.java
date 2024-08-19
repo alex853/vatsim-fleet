@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 public class ScheduledTasks {
     private static final Logger log = LoggerFactory.getLogger(ScheduledTasks.class);
 
-    @Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRate = 100)
     public void processReport() {
         VatsimFleetProcessor.processOneReport();
     }
