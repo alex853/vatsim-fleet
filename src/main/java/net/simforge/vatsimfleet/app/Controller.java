@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("service/v1")
@@ -61,7 +62,8 @@ public class Controller {
     }
 
     @GetMapping("erroneous-cases")
-    public ResponseEntity<Map<String, ErroneousCases.CaseInfo>> getErroneousCases() {
-        return ResponseEntity.ok(ErroneousCases.getCases());
+    public ResponseEntity<List<ErroneousCases.CaseInfo>> getErroneousCases() {
+        final Map<String, ErroneousCases.CaseInfo> cases = ErroneousCases.getCases();
+        return ResponseEntity.ok(cases.values().stream().sorted((c1, c2) -> Integer.compare(c2.getCount(), c1.getCount())).collect(Collectors.toList()));
     }
 }
