@@ -7,6 +7,7 @@ import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -78,6 +79,10 @@ public class VatsimFleetProcessor {
                 return;
             }
 
+            if (position.getGroundspeed() != 0) {
+                return; // this could be improved by kind of tracking, looking for several last positions
+            }
+
             final String aircraftType = position.getFpAircraftType();
             final String airportIcao = position.getAirportIcao();
 
@@ -85,7 +90,7 @@ public class VatsimFleetProcessor {
                 return;
             }
 
-            parkAircraft(position, parkedAircraft);
+            parkAircraft(position, reportPilotPosition.getHeading(), parkedAircraft);
         });
 
         VatsimFleetProcessor.pilots = pilots;
@@ -93,7 +98,7 @@ public class VatsimFleetProcessor {
         lastProcessedReport = nextReport;
     }
 
-    private static void parkAircraft(final Position position, final Map<String, List<Aircraft>> parkedAircraft) {
+    private static void parkAircraft(final Position position, final int heading, final Map<String, List<Aircraft>> parkedAircraft) {
         final String aircraftType = position.getFpAircraftType();
         final String airportIcao = position.getAirportIcao();
         final String regNo = position.getRegNo();
@@ -104,7 +109,9 @@ public class VatsimFleetProcessor {
                 regNo,
                 airlineCode,
                 position.getCoords().getLat(),
-                position.getCoords().getLon());
+                position.getCoords().getLon(),
+                heading,
+                position.getReportInfo().getDt().toEpochSecond(ZoneOffset.UTC));
 
         final List<Aircraft> aircraftInAirport = parkedAircraft.getOrDefault(airportIcao, Collections.emptyList());
         final ArrayList<Aircraft> newAircraftInAirport = new ArrayList<>(aircraftInAirport);
@@ -119,13 +126,11 @@ public class VatsimFleetProcessor {
         final String airlineCode = getAirlineCode(position);
 
         final List<Aircraft> aircraftInAirport = parkedAircraft.getOrDefault(airportIcao, Collections.emptyList());
-        log.info("Airport {} - ACTIVATE - Type {}, Airline {}, All available aircraft in airport {}", airportIcao, aircraftType, airlineCode, aircraftInAirport);
-
         final List<Aircraft> aircraftByType = aircraftInAirport.stream().filter(a -> Objects.equals(aircraftType, a.getAircraftType())).collect(Collectors.toList());
         final List<Aircraft> aircraftByAirline = aircraftByType.stream().filter(a -> Objects.equals(airlineCode, a.getAirlineCode())).collect(Collectors.toList());
 
         if (aircraftByAirline.isEmpty()) {
-            log.info("Airport {} - ACTIVATE - No suitable aircraft found", airportIcao);
+            log.info("Airport {} - ACTIVATE - Looking for Type {}, Airline {} - No suitable aircraft found", airportIcao, aircraftType, airlineCode);
             return;
         }
 
@@ -133,7 +138,7 @@ public class VatsimFleetProcessor {
         final ArrayList<Aircraft> newAircraftInAirport = new ArrayList<>(aircraftInAirport);
         newAircraftInAirport.remove(aircraft);
         parkedAircraft.put(airportIcao, Collections.unmodifiableList(newAircraftInAirport));
-        log.info("Airport {} - ACTIVATE - Aircraft {} ACTIVATED", airportIcao, aircraft);
+        log.info("Airport {} - ACTIVATE - Looking for Type {}, Airline {} - Aircraft {} ACTIVATED", airportIcao, aircraftType, airlineCode, aircraft);
     }
 
     private static String getAirlineCode(final Position position) {
