@@ -2,6 +2,7 @@ package net.simforge.vatsimfleet.processor;
 
 import net.simforge.networkview.core.Network;
 import net.simforge.networkview.core.Position;
+import net.simforge.networkview.core.report.ParsingLogics;
 import net.simforge.networkview.core.report.persistence.*;
 import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
@@ -146,7 +147,9 @@ public class VatsimFleetProcessor {
         final String regNo = position.getRegNo();
 
         if (callsign.equals(regNo)) {
-            return null;
+            return null; // both callsign and regno have the same regno and there is no airline code available
+        } else if (callsign.equals(ParsingLogics.recognizeRegNo(callsign))) {
+            return null; // callsign keeps regno so there is no airline code available
         } else {
             final String callsignHead = callsign.substring(0, Math.min(3, callsign.length()));
             if (callsignHead.matches(".*\\d.*")) {
