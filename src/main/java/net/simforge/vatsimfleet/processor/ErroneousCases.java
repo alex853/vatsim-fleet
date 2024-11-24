@@ -8,13 +8,13 @@ public class ErroneousCases {
     private static final Map<String, CaseInfo> cases = new TreeMap<>();
 
     private static final Set<String> caseCodesToBeSkipped = new TreeSet<>(Arrays.asList(
-            "AA",
-            "AF",
-            "BA",
-            "C1",
-            "FD",
-            "LH",
-            "N0", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9"
+//            "AA",
+//            "AF",
+//            "BA",
+//            "C1",
+//            "FD",
+//            "LH",
+//            "N0", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9"
     ));
 
     public static void report(final String callsign, String regNo, String report) {
