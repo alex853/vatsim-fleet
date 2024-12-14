@@ -2,7 +2,6 @@ package net.simforge.vatsimfleet.app;
 
 import net.simforge.commons.misc.JavaTime;
 import net.simforge.networkview.core.report.ReportUtils;
-import net.simforge.networkview.core.report.persistence.Report;
 import net.simforge.vatsimfleet.processor.Aircraft;
 import net.simforge.vatsimfleet.processor.ErroneousCases;
 import net.simforge.vatsimfleet.processor.VatsimFleetProcessor;
@@ -40,16 +39,16 @@ public class Controller {
     public ResponseEntity<Map<String, Object>> getStatus() {
         Map<String, Object> status = new HashMap<>();
 
-        final Report lastProcessedReport = VatsimFleetProcessor.getLastProcessedReport();
+        final String lastProcessedReport = VatsimFleetProcessor.getLastProcessedReport();
         final LocalDateTime reportTimestamp = lastProcessedReport != null
-                ? ReportUtils.fromTimestampJava(lastProcessedReport.getReport())
+                ? ReportUtils.fromTimestampJava(lastProcessedReport)
                 : LocalDateTime.MIN;
         final double hours = JavaTime.hoursBetween(reportTimestamp, JavaTime.nowUtc());
         final boolean ok = hours <= 0.2;
 
         status.put("status", (ok ? "OK" : "FAIL"));
 
-        status.put("lastProcessedReport", lastProcessedReport != null ? lastProcessedReport.getReport() : null);
+        status.put("lastProcessedReport", lastProcessedReport);
         status.put("aircraftCount", VatsimFleetProcessor.getAircraftCount());
 
         Map<String, Integer> memoryReport = new TreeMap<>();

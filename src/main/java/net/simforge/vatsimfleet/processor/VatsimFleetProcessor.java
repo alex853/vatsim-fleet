@@ -2,13 +2,13 @@ package net.simforge.vatsimfleet.processor;
 
 import net.simforge.networkview.core.Network;
 import net.simforge.networkview.core.Position;
-import net.simforge.networkview.core.report.ParsingLogics;
 import net.simforge.networkview.core.report.RegNoPatterns;
-import net.simforge.networkview.core.report.persistence.*;
+import net.simforge.networkview.core.report.compact.CompactifiedStorage;
 import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -17,15 +17,14 @@ public class VatsimFleetProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(VatsimFleetProcessor.class);
 
-    private static final ReportSessionManager sessionManager = new ReportSessionManager();
-    private static final ReportOpsService reportOpsService = new BaseReportOpsService(sessionManager, Network.VATSIM);
-    private static Report lastProcessedReport = null;
+    private static final CompactifiedStorage storage = CompactifiedStorage.getStorage("../data", Network.VATSIM);
+    private static String lastProcessedReport = null;
     private static long nextTimeToLookForReport = 0;
 
     private static Map<Integer, PilotStatus> pilots = new TreeMap<>();
     private static Map<String, List<Aircraft>> parkedAircraft = new TreeMap<>();
 
-    public static void processOneReport() {
+    public static void processOneReport() throws IOException {
         final long now = System.currentTimeMillis();
         if (nextTimeToLookForReport != 0 && now < nextTimeToLookForReport) {
             return;
@@ -34,11 +33,11 @@ public class VatsimFleetProcessor {
         final Map<Integer, PilotStatus> pilots = new TreeMap<>(VatsimFleetProcessor.pilots);
         final Map<String, List<Aircraft>> parkedAircraft = new TreeMap<>(VatsimFleetProcessor.parkedAircraft);
 
-        final Report nextReport = lastProcessedReport != null
-                ? reportOpsService.loadNextReport(lastProcessedReport.getReport())
-                : reportOpsService.loadFirstReport();
+        final String nextReport = lastProcessedReport != null
+                ? storage.getNextReport(lastProcessedReport)
+                : storage.getFirstReport();
 
-        if (nextReport == null || !nextReport.getParsed()) {
+        if (nextReport == null) {
             nextTimeToLookForReport = now + 5000;
             return;
         } else {
@@ -46,14 +45,13 @@ public class VatsimFleetProcessor {
         }
 
         log.info("Processing report {}", nextReport);
-        final List<ReportPilotPosition> positions = reportOpsService.loadPilotPositions(nextReport);
+        final List<Position> positions = storage.loadPositions(nextReport);
 
-        positions.forEach(p -> {
-            final int pilotNumber = p.getPilotNumber();
+        positions.forEach(position -> {
+            final int pilotNumber = position.getPilotNumber();
 
             PilotStatus pilotStatus = pilots.get(pilotNumber);
             if (pilotStatus == null) {
-                Position position = Position.create(p);
                 if (position.isInAirport() && position.isOnGround() && lastProcessedReport != null) {
                     final String airportIcao = position.getAirportIcao();
                     final String aircraftType = position.getFpAircraftType();
@@ -63,20 +61,23 @@ public class VatsimFleetProcessor {
                     }
                 }
 
-                pilotStatus = new PilotStatus(p);
+                pilotStatus = new PilotStatus(position);
                 pilots.put(pilotNumber, pilotStatus);
             } else {
-                pilotStatus.setPosition(p);
+                pilotStatus.setPosition(position);
             }
         });
 
         //noinspection unchecked
-        final Collection<Integer> unseenPilotNumbers = CollectionUtils.subtract(pilots.keySet(), positions.stream().map(ReportPilotPosition::getPilotNumber).collect(Collectors.toSet()));
+        final Collection<Integer> unseenPilotNumbers = CollectionUtils.subtract(
+                pilots.keySet(),
+                positions.stream()
+                        .map(Position::getPilotNumber)
+                        .collect(Collectors.toSet()));
         unseenPilotNumbers.forEach(pilotNumber -> {
             final PilotStatus pilotStatus = pilots.remove(pilotNumber);
 
-            final ReportPilotPosition reportPilotPosition = pilotStatus.getPosition();
-            final Position position = Position.create(reportPilotPosition);
+            final Position position = pilotStatus.getPosition();
             if (!position.isOnGround() || !position.isInAirport()) {
                 return;
             }
@@ -92,7 +93,7 @@ public class VatsimFleetProcessor {
                 return;
             }
 
-            parkAircraft(position, reportPilotPosition.getHeading(), parkedAircraft);
+            parkAircraft(position, position.getHeading(), parkedAircraft);
         });
 
         VatsimFleetProcessor.pilots = pilots;
@@ -165,7 +166,7 @@ public class VatsimFleetProcessor {
         return parkedAircraft.getOrDefault(icao, new ArrayList<>());
     }
 
-    public static Report getLastProcessedReport() {
+    public static String getLastProcessedReport() {
         return lastProcessedReport;
     }
 
@@ -174,17 +175,17 @@ public class VatsimFleetProcessor {
     }
 
     private static class PilotStatus {
-        private ReportPilotPosition position;
+        private Position position;
 
-        public PilotStatus(ReportPilotPosition position) {
+        public PilotStatus(Position position) {
             this.position = position;
         }
 
-        public ReportPilotPosition getPosition() {
+        public Position getPosition() {
             return position;
         }
 
-        public void setPosition(ReportPilotPosition position) {
+        public void setPosition(Position position) {
             this.position = position;
         }
     }

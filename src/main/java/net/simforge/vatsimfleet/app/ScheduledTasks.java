@@ -8,13 +8,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+
 @Component
 public class ScheduledTasks {
     private static final Logger log = LoggerFactory.getLogger(ScheduledTasks.class);
 
     @Scheduled(fixedRate = 100)
     public void processReport() {
-        VatsimFleetProcessor.processOneReport();
+        try {
+            VatsimFleetProcessor.processOneReport();
+        } catch (IOException e) {
+            log.error("unable to process report", e);
+        }
     }
 
     @Scheduled(fixedRate = 30000)
