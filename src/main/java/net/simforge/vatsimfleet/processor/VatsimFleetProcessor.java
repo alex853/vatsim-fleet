@@ -1,5 +1,6 @@
 package net.simforge.vatsimfleet.processor;
 
+import net.simforge.commons.legacy.misc.Settings;
 import net.simforge.networkview.core.Network;
 import net.simforge.networkview.core.Position;
 import net.simforge.networkview.core.report.RegNoPatterns;
@@ -17,7 +18,7 @@ public class VatsimFleetProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(VatsimFleetProcessor.class);
 
-    private static final CompactifiedStorage storage = CompactifiedStorage.getStorage("../data", Network.VATSIM);
+    private static final CompactifiedStorage storage = CompactifiedStorage.getStorage(Settings.get("storage.root"), Network.VATSIM);
     private static String lastProcessedReport = null;
     private static long nextTimeToLookForReport = 0;
 

@@ -38,14 +38,11 @@ jobs:
             - ~/.gradle
           key: v1-dependencies-{{ checksum "build.gradle" }}
       - add_ssh_keys
-      #          fingerprints:
-      #            - "${SSH_FINGERPRINT}"
-      #- run: ssh-keyscan -H ${SSH_SERVER} >> ~/.ssh/known_hosts
       - run:
           name: Deploy Over SSH
           command: |
-            echo '${SSH_KNOWN_HOST}' >> ~/.ssh/known_hosts
-            scp -o StrictHostKeyChecking=no -P ${SSH_PORT} -r ~/repo/build/libs/*.jar ${SSH_USER}@${SSH_HOST}:~/circleciuploads/vatsim-fleet/vatsim-fleet.jar
+            echo '<hostname> <type> <key>' >> ~/.ssh/known_hosts
+            scp -o StrictHostKeyChecking=no -P ${SSH_PORT} -r ~/repo/build/libs/*.jar ${SSH_USER}@${SSH_HOST}:~/circleciuploads/vatsim-fleet.jar
 
 workflows:
   version: 2
